@@ -1,18 +1,100 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Digital Detox</title>
-</head>
-<body>
-    <h1>Digital Detox System</h1>
+{% extends "base.html" %}
 
-    <form action="/add" method="POST">
-        <input type="text" name="app_name" placeholder="App Name" required>
-        <input type="number" name="minutes" placeholder="Minutes" required>
-        <button type="submit">Add Usage</button>
-    </form>
+{% block content %}
+<div class="grid grid-2">
+    <div class="card">
+        <h2>Today vs goal</h2>
+        <div class="stat-big">{{ today_minutes }} <span>min today</span></div>
+        <p class="muted">Daily goal: {{ daily_goal }} minutes</p>
+        <div class="progress {% if over_goal %}warn{% endif %}">
+            <i style="width: {{ goal_percent }}%;"></i>
+        </div>
+        {% if over_goal %}
+            <p class="muted" style="margin-top:0.75rem;color:var(--warn);">You are over today’s goal — consider a short offline break.</p>
+        {% elif today_minutes > 0 %}
+            <p class="muted" style="margin-top:0.75rem;">{{ goal_percent }}% of your daily budget used.</p>
+        {% else %}
+            <p class="muted" style="margin-top:0.75rem;">No screen time logged for today yet.</p>
+        {% endif %}
+    </div>
 
-    <br>
-    <a href="/view">View Usage</a>
-</body>
-</html>
+    <div class="card">
+        <h2>Daily goal</h2>
+        <form action="{{ url_for('update_goal') }}" method="post">
+            <label for="daily_goal_minutes">Target minutes per day</label>
+            <input type="number" id="daily_goal_minutes" name="daily_goal_minutes" min="1" max="1440" value="{{ daily_goal }}" required>
+            <button type="submit" class="btn btn-primary" style="width:100%;">Save goal</button>
+        </form>
+    </div>
+</div>
+
+<div class="grid" style="margin-top:1.25rem;">
+    <div class="card">
+        <h2>Log screen time</h2>
+        <form action="{{ url_for('add_usage') }}" method="post">
+            <div class="row row-2">
+                <div>
+                    <label for="app_name">App or site</label>
+                    <input type="text" id="app_name" name="app_name" placeholder="e.g. Instagram, YouTube" required maxlength="120">
+                </div>
+                <div>
+                    <label for="minutes">Minutes</label>
+                    <input type="number" id="minutes" name="minutes" placeholder="45" min="0" required>
+                </div>
+            </div>
+            <label for="logged_date">Date (optional, defaults to today)</label>
+            <input type="date" id="logged_date" name="logged_date">
+            <button type="submit" class="btn btn-primary">Add usage</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Last 7 days · by app</h2>
+        {% if weekly_by_app %}
+            {% for row in weekly_by_app %}
+            <div class="bar-row">
+                <span>{{ row.app_name }}</span>
+                <div class="track">
+                    <div class="fill" style="width: {{ (row.total / week_max * 100) | round(1) }}%;"></div>
+                </div>
+                <strong>{{ row.total }}m</strong>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="muted">No data in the last week. Log some screen time above.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Recent entries</h2>
+        {% if usage_rows %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>App</th>
+                        <th>Minutes</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in usage_rows %}
+                    <tr>
+                        <td>{{ r.app_name }}</td>
+                        <td>{{ r.usage_minutes }}</td>
+                        <td>{{ r.logged_date }}</td>
+                        <td>
+                            <form action="{{ url_for('delete_usage', entry_id=r.id) }}" method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Remove this row?');">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No entries yet. Add your first log above.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
